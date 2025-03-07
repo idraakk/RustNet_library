@@ -2,6 +2,8 @@
 
 RustNet is a simple, fully-connected (dense) neural network library written in Rust, with Python bindings via **PyO3**.  
 It allows you to define, train, and use a neural network directly in Python while leveraging Rust's performance advantages.
+PERFORMANCE REPORT: https://colab.research.google.com/drive/1AytQ5TfEe8rPU_ziM7tTPWeXMWD4fPX0?usp=sharing
+
 
 ---
 
