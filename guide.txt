@@ -1,0 +1,230 @@
+Rust Neural Network Library Installation and Usage Guide
+=======================================================
+
+## 1. Prerequisites and Environment Setup
+
+Before you begin, ensure that you have the following installed:
+
+1. **Rust:**  
+   Install Rust using rustup:  
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+   Verify the installation with:  
+   ```bash
+   rustc --version
+   ```
+
+2. **Python (3.7+):**  
+   Ensure Python is installed. Check with:  
+   ```bash
+   python --version
+   ```
+
+3. **Virtual Environment:**  
+   It is best practice to use a virtual environment.  
+   - To create one, run:  
+     ```bash
+     python -m venv .venv
+     ```  
+   - Then activate it:  
+     - **Windows:**  
+       ```bash
+       .venv\Scripts\activate
+       ```  
+     - **Unix/Mac:**  
+       ```bash
+       source .venv/bin/activate
+       ```
+
+4. **Maturin:**  
+   Maturin is required to build Python extensions in Rust. Check if it’s installed by running:  
+   ```bash
+   maturin --version
+   ```  
+   If it’s not installed, install it with pip:  
+   ```bash
+   pip install maturin
+   ```
+
+---
+
+## 2. Project Overview and File Structure
+
+Your project directory (named **rust_net**) should have the following structure:
+
+```
+rust_net/
+├── Cargo.toml               # Contains package metadata and dependencies.
+└── src/
+    ├── activations.rs       # Activation functions (ReLU, Sigmoid, etc.)
+    ├── data.rs              # CSV data loading utilities.
+    ├── layers.rs            # Dense layer implementation.
+    ├── loss.rs              # Loss function (MSE).
+    ├── serde_arrays.rs      # Custom serialization for ndarrays.
+    ├── train.rs             # Training (forward/backprop, gradient clipping).
+    └── lib.rs               # Library entry point with PyO3 bindings.
+```
+
+You also have a Python script, **run.py**, that uses your library.
+
+---
+
+## 3. Build and Install the Rust Library as a Python Extension
+
+### Step 3.1: Verify Your Virtual Environment
+
+Make sure your virtual environment is activated (your prompt should show something like `(.venv)`).
+
+### Step 3.2: Build the Extension with Maturin
+
+In the root of your project directory (where `Cargo.toml` is located), run one of the following commands:
+
+#### Option A: Using `maturin develop`  
+This command compiles your Rust code into a Python extension and installs it directly into your active virtual environment.
+
+```bash
+maturin develop
+```
+
+If you encounter an error that a virtual environment is not detected, double-check that your virtual environment is activated.  
+If the error persists, you can switch to Option B.
+
+#### Option B: Building a Wheel and Installing It
+
+1. **Build the Wheel:**  
+   Run:
+   ```bash
+   maturin build
+   ```
+   This creates a wheel file in the `target/wheels` directory. The file name will be similar to:
+   ```
+   rust_net-0.1.0-cp39-cp39-win_amd64.whl
+   ```
+   (The exact name depends on your Python version and platform.)
+
+2. **Install the Wheel:**  
+   Then, install the generated wheel using pip:
+   ```bash
+   pip install target\wheels\rust_net-0.1.0-cp39-cp39-win_amd64.whl
+   ```
+   (Make sure to adjust the filename if it differs.)
+
+### Step 3.3: Verify the Installation
+
+Run:
+```bash
+pip show rust_net
+```
+This should display the installed package details. Even if pip shows the package as **rust_net**, remember that the module name is determined by your `#[pymodule]` declaration in **lib.rs** (for example, if you declared it as `rust_net_py`, then you import it in Python as `import rust_net_py`).
+
+To test, open a Python shell and run:
+```python
+import rust_net_py
+print(rust_net_py.__file__)
+```
+
+---
+
+## 4. Using the Library in Python
+
+Below is an example **run.py** file that demonstrates how to use your library:
+
+```python
+# run.py
+import rust_net_py
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import csv
+
+def main():
+    df = pd.read_csv("data.csv")
+    data = df.values  
+    X = data[:, :-1]
+    y = data[:, -1].reshape(-1, 1)
+    
+    X = X.astype(np.float64)
+    y = y.astype(np.float64)
+    
+    mean = np.mean(X, axis=0)
+    std = np.std(X, axis=0)
+    X_norm = (X - mean) / std
+    
+    X_norm_list = X_norm.tolist()
+    y_list = y.tolist()
+    
+    nn = rust_net_py.PyNeuralNetwork([len(X_norm[0]), 10, 1])
+    nn.train(X_norm_list, y_list, learning_rate=0.0001, epochs=1000)
+    
+    predictions = nn.predict(X_norm_list)
+    
+    with open("predictions_exported.csv", "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["predicted value", "actual value"])
+        for pred, actual in zip(predictions, y_list):
+            writer.writerow([pred[0], actual[0]])
+    
+    pred_values = [pred[0] for pred in predictions]
+    actual_values = [actual[0] for actual in y_list]
+    
+    plt.figure(figsize=(10, 6))
+    plt.scatter(range(len(pred_values)), pred_values, color='blue', label='Predicted", alpha=0.7)
+    plt.scatter(range(len(actual_values)), actual_values, color='red', label='Actual", marker='x', alpha=0.7)
+    plt.title("Predicted vs Actual Values")
+    plt.xlabel("Sample Index")
+    plt.ylabel("Value")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## 5. Summary of Steps
+
+1. **Set Up Environment:**
+   - Install Rust (via rustup) and Python 3.7+.
+   - Create and activate a virtual environment.
+   - Install maturin:  
+     ```bash
+     pip install maturin
+     ```
+
+2. **Build the Library:**
+   - Navigate to the project root (where Cargo.toml is located).
+   - Run:  
+     ```bash
+     maturin develop
+     ```  
+     (If you prefer, build a wheel using `maturin build` and then install it with pip.)
+
+3. **Verify Installation:**
+   - Check with:  
+     ```bash
+     pip show rust_net
+     ```
+   - Test in Python shell:  
+     ```python
+     import rust_net_py
+     print(rust_net_py.__file__)
+     ```
+
+4. **Use the Library in Python:**
+   - Prepare your **data.csv** file (features + target in the last column).
+   - Run your **run.py** script:  
+     ```bash
+     python run.py
+     ```
+   - The script loads, normalizes data, trains the network, generates predictions, exports a CSV file, and displays a scatter plot.
+
+---
+
+By following this guide, you’ll have installed your Rust neural network library (rust_net) and be able to use it in Python seamlessly. If you run into any issues, ensure that each prerequisite is met and that you’re working within your virtual environment. Feel free to ask if you need further assistance!
+
+PERFORMANCE REPORT CHECKER:
+https://colab.research.google.com/drive/1AytQ5TfEe8rPU_ziM7tTPWeXMWD4fPX0?usp=sharing
+
