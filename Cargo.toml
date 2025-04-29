@@ -1,0 +1,34 @@
+[package]
+name = "rust_net"               # The package name that Cargo uses. This identifies my project.
+version = "0.1.0"               # Version number of your project. Semantic versioning is recommended.
+edition = "2021"                # Specifies the Rust edition. Edition 2021 is the latest stable and provides modern features.
+
+[dependencies]
+# The ndarray crate is used for n-dimensional arrays and numerical operations.
+# We enable the "serde" feature so that we can serialize and deserialize arrays.
+ndarray = { version = "0.15", features = ["serde"] }  
+
+# The rand crate provides random number generation. We use it to initialize weights randomly.
+rand = "0.8"
+
+# Serde is a framework for serializing and deserializing data.
+# The "derive" feature allows us to automatically generate code for Serialize and Deserialize traits.
+serde = { version = "1.0", features = ["derive"] }
+
+# serde_json lets us work with JSON files. We use it to save and load our model.
+serde_json = "1.0"
+
+# csv is a library to read and write CSV files. We use it to load our training data.
+csv = "1.1"
+
+# clap is used to parse command-line arguments (used in the original CLI version).
+clap = { version = "4.0", features = ["derive"] }
+
+# PyO3 is used to build Python bindings so that our Rust code can be called from Python.
+# The "extension-module" feature is necessary to compile the library as a Python extension.
+pyo3 = { version = "0.18", features = ["extension-module"] }
+
+[lib]
+# We specify that the crate type is "cdylib", which tells Cargo to compile a dynamic library
+# suitable for integration with other languages (Python in this case).
+crate-type = ["cdylib"]
