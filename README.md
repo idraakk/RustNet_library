@@ -1,166 +1,241 @@
-# RustNet - A Rust-based Neural Network Library with Python Bindings
+# RustNet — A Tiny, Fast Neural Network in Rust with First‑Class Python Bindings
 
-RustNet is a simple, fully-connected (dense) neural network library written in Rust, with Python bindings via **PyO3**.  
-It allows you to define, train, and use a neural network directly in Python while leveraging Rust's performance advantages.
-PERFORMANCE REPORT: https://colab.research.google.com/drive/1AytQ5TfEe8rPU_ziM7tTPWeXMWD4fPX0?usp=sharing
+RustNet is a **from‑scratch, fully‑connected neural network** written in **Rust** and exposed to **Python** via [PyO3](https://pyo3.rs) and [maturin](https://www.maturin.rs/). It’s intentionally small, readable, and hackable—perfect for learning how modern ML internals work while still getting **native‑speed** inference/training from Rust.
 
-
----
-
-## 📌 Features
-- **Custom Neural Network Implementation** – Not based on existing ML frameworks.
-- **Supports Binary Classification** – Using **sigmoid activation** in the final layer.
-- **Gradient Descent with Backpropagation** – Includes **gradient clipping** to prevent numerical instability.
-- **Training and Prediction Support** – Load data, normalize it, train, and make predictions.
-- **Seamless Python Integration** – Use it just like any other Python package.
+> **Performance report (Colab):**  
+> https://colab.research.google.com/drive/1AytQ5TfEe8rPU_ziM7tTPWeXMWD4fPX0?usp=sharing
 
 ---
 
-## 📂 Project Structure
+## ✨ Highlights
+
+- **Pure Rust core**: deterministic, fast, memory‑safe implementation.
+- **Python‑first UX**: `import rust_net` and go—train from pandas/NumPy in a few lines.
+- **Dense MLP**: ReLU hidden layers, **Sigmoid** output for binary classification.
+- **Stable training**: BCE‑style gradient at the output (`dZ = A − Y`) + **gradient clipping**.
+- **Model persistence**: Save/Load weights & biases as JSON (portable & diff‑friendly).
+- **Batteries included**: Example scripts for real data (`run.py`) and **synthetic RF data** (`rf_data_gen.py` + `run2.py`).
+
+---
+
+## 🧠 What’s Inside (Architecture)
+
+- **Layers**: One or more `DenseLayer` blocks with weights `W ∈ R^{in×out}` and bias `b ∈ R^{1×out}`.
+- **Activations**:
+  - Hidden layers: **ReLU** (`max(0, x)`)
+  - Output layer: **Sigmoid** for probabilities in `(0, 1)`
+- **Loss/Gradients**:
+  - Output layer uses the **cross‑entropy with sigmoid** simplification: `dZ = A − Y` (numerically stable)
+  - Hidden layers backprop with `dZ = dA * ReLU'(Z)`
+  - **Gradient clipping** on `dW` and `db` to fight NaNs/exploding grads
+- **Logging**: We print **MSE** each epoch as a convenient (if imperfect) scalar to track training.
+
+> Aim: Keep the math explicit and the code legible so it’s a great learning/lab tool, not a black box.
+
+---
+
+## 📁 Project Layout
+
 ```
 rust_net/
-├── Cargo.toml               # Rust package metadata and dependencies.
-└── src/
-    ├── activations.rs       # Activation functions (ReLU, Sigmoid, etc.)
-    ├── data.rs              # CSV data loading utilities.
-    ├── layers.rs            # Dense layer implementation.
-    ├── loss.rs              # Loss function (MSE).
-    ├── serde_arrays.rs      # Custom serialization for ndarrays.
-    ├── train.rs             # Training (forward/backprop, gradient clipping).
-    ├── lib.rs               # Library entry point with PyO3 bindings.
-└── run.py                   # Example usage in Python.
+├─ Cargo.toml                # Rust crate manifest (builds a Python extension: rust_net)
+├─ rf_data_gen.py            # Synthetic RF dataset generator (Frequency, Amplitude, Label)
+├─ run.py                    # Example: train & visualize on a CSV (e.g., diabetes.csv)
+├─ run2.py                   # Example: train/test on the synthetic RF dataset
+└─ src/
+   ├─ activations.rs         # ReLU + Sigmoid (and ReLU derivative)
+   ├─ data.rs                # CSV → ndarray helpers (optional utility)
+   ├─ layers.rs              # Dense layer (W, b) + forward pass
+   ├─ lib.rs                 # PyO3 bindings exported as module `rust_net`
+   ├─ loss.rs                # MSE (for logging)
+   ├─ serde_arrays.rs        # Serialize/deserialize ndarray as JSON
+   └─ train.rs               # Network, forward/backward, training loop, save/load
 ```
 
 ---
 
-## 🛠 Installation Guide
+## 🚀 Quick Start
 
-### 1️⃣ Prerequisites
-Before you begin, ensure that you have the following installed:
-- **Rust** (via [rustup](https://rustup.rs)):  
-  ```bash
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-  ```
-- **Python (3.7+)**
-- **Virtual Environment** (Recommended)
-- **Maturin** (For building Rust Python extensions):
-  ```bash
-  pip install maturin
-  ```
+### 1) Prerequisites
 
-### 2️⃣ Create & Activate a Virtual Environment
+- **Python** 3.8–3.12 (64‑bit recommended)
+- **Rust** (via `rustup`) → https://rustup.rs
+- **Build tools** (Windows): **Visual Studio Build Tools** with **C++** workload
+- **maturin** to build Python extensions
+
+### 2) Create & activate a virtual environment
+
 ```bash
+# Windows (PowerShell)
 python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# Mac/Linux:
+.\.venv\Scripts\Activate
+
+# macOS / Linux
+python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3️⃣ Build the Library and Install it
-Navigate to the project root (where `Cargo.toml` is located) and run:
+> **PowerShell gotcha:** If activation is blocked, run once per shell:
+> ```powershell
+> Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+> .\.venv\Scripts\Activate.ps1
+> ```
+
+### 3) Install build/runtime deps
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install maturin numpy pandas matplotlib
+```
+
+### 4) Build & install the Python extension
+
+From the project root (where `Cargo.toml` lives):
+
 ```bash
 maturin develop
 ```
-OR, if you prefer to build a wheel:
+
+This compiles Rust → a Python extension and installs it into the active venv as module **`rust_net`**.
+
+---
+
+## 🧪 Example 1: Train on your CSV (`run.py`)
+
+**Expectations:** your CSV puts **features in every column except the last**, with the **last column as the binary label (0/1)**.
+
 ```bash
-maturin build
-pip install target/wheels/rust_net-0.1.0-cp39-cp39-win_amd64.whl
+# Place diabetes.csv next to run.py (or change the filename inside run.py)
+python run.py
 ```
 
-### 4️⃣ Verify Installation
+This will:
+- Normalize features column‑wise (mean/std)
+- Train a tiny net `[n_features, 10, 1]`
+- Save `predictions_exported.csv`
+- Show a scatter plot of predicted probability vs actual label
+
+---
+
+## 📡 Example 2: Synthetic RF Dataset (`rf_data_gen.py` + `run2.py`)
+
+1) Generate the dataset (1000 points of noisy sine wave):
 ```bash
-pip show rust_net
+python rf_data_gen.py
 ```
-Or test in Python:
+This creates **`rf_data.csv`** with columns: `Frequency`, `Amplitude`, `Label`.
+
+2) Train/test on it:
+```bash
+python run2.py
+```
+You’ll get:
+- Train/test split (80/20, deterministic)
+- Accuracy + confusion matrix on the test set
+- `predictions_exported_rf.csv`
+- A plot of **predicted probabilities vs actual labels**
+
+---
+
+## 🐍 Python API (Mini‑docs)
+
 ```python
-import rust_net_py
-print(rust_net_py.__file__)
+import rust_net
+
+# Create a network for binary classification
+# Example: 8 input features → 10 hidden units → 1 output prob
+nn = rust_net.PyNeuralNetwork([8, 10, 1])
+
+# Train
+# inputs: List[List[float]] shape (n, m)
+# targets: List[List[float]] shape (n, 1) with 0/1 values
+nn.train(inputs, targets, learning_rate=0.001, epochs=2000)
+
+# Predict probabilities (List[List[float]]; each row has length 1)
+probs = nn.predict(inputs)
+
+# Save / Load
+nn.save("model.json")
+nn2 = rust_net.PyNeuralNetwork.load("model.json")
 ```
 
----
+**Data shape reminders**
+- `inputs` must be **2‑D** (`n_samples × n_features`)
+- `targets` must be **2‑D** (`n_samples × 1`) with 0/1 values
 
-## 🚀 Usage Example (Python)
-Below is an example script (**run.py**) to train and use the RustNet neural network in Python.
-
+**Normalization**  
+Always normalize features for stability and faster convergence:
 ```python
-import rust_net_py
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import csv
-
-def main():
-    df = pd.read_csv("data.csv")  # Load dataset.
-    data = df.values  
-    X = data[:, :-1]  # Features.
-    y = data[:, -1].reshape(-1, 1)  # Targets.
-
-    X = X.astype(np.float64)
-    y = y.astype(np.float64)
-
-    mean = np.mean(X, axis=0)
-    std = np.std(X, axis=0)
-    X_norm = (X - mean) / std
-
-    X_norm_list = X_norm.tolist()
-    y_list = y.tolist()
-
-    nn = rust_net_py.PyNeuralNetwork([len(X_norm[0]), 10, 1])
-    nn.train(X_norm_list, y_list, learning_rate=0.0001, epochs=1000)
-
-    predictions = nn.predict(X_norm_list)
-
-    with open("predictions_exported.csv", "w", newline="") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(["predicted value", "actual value"])
-        for pred, actual in zip(predictions, y_list):
-            writer.writerow([pred[0], actual[0]])
-
-    pred_values = [pred[0] for pred in predictions]
-    actual_values = [actual[0] for actual in y_list]
-
-    plt.figure(figsize=(10, 6))
-    plt.scatter(range(len(pred_values)), pred_values, color='blue', label='Predicted", alpha=0.7)
-    plt.scatter(range(len(actual_values)), actual_values, color='red', label='Actual", marker='x', alpha=0.7)
-    plt.title("Predicted vs Actual Values")
-    plt.xlabel("Sample Index")
-    plt.ylabel("Value")
-    plt.legend()
-    plt.grid()
-    plt.show()
-
-if __name__ == "__main__":
-    main()
+mean = X.mean(axis=0)
+std = X.std(axis=0)
+std[std == 0] = 1.0
+X = (X - mean) / std
 ```
 
 ---
 
-## 📊 Visualizing the Predictions
-Once the script runs, a scatter plot will be generated comparing **Predicted Values (Blue)** vs **Actual Values (Red)**.
+## ⚙️ Design Choices & Rationale
+
+- **Sigmoid + CE gradient** for the final layer (`dZ = A − Y`) is the standard, numerically stable way to train binary classifiers.
+- **Gradient clipping** (`[-1, 1]` by default) keeps updates sane on tricky data and guards against NaNs.
+- **MSE logging**: We print MSE per epoch for a single scalar view of progress (even though CE is used in backprop). Easy to swap out if you want CE logging instead.
+- **JSON checkpoints** keep versioning easy and diffs readable.
+
+Want to go further? Try:
+- Mini‑batches & Adam/RMSProp
+- Softmax for multi‑class
+- Custom activations per layer
 
 ---
 
-## 🎯 Summary of Steps
-1. **Install Dependencies:** Rust, Python, Virtual Environment, Maturin.
-2. **Build the Rust Library:** Run `maturin develop`.
-3. **Verify Installation:** Test import in Python.
-4. **Train & Predict:** Use `run.py` with your dataset.
-5. **Export & Visualize Predictions:** A CSV file and plot are generated.
+## 💾 Reproducibility Tips
+
+- For synthetic data: use a fixed RNG seed (see `rf_data_gen.py`).
+- Fix train/test split with a seeded RNG (as in `run2.py`).
+- Log your hyperparameters (LR, epochs, architecture) alongside results.
 
 ---
 
-## 🏗 Future Improvements
-- Multi-class classification support.
-- Support for different activation functions in hidden layers.
-- Implement additional optimization techniques.
+## 🧯 Troubleshooting
+
+**PowerShell won’t activate my venv**  
+Use (per shell):
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+**maturin build errors on Windows**  
+Install **Visual Studio Build Tools** with the **C++** workload. Re‑open your shell afterward.
+
+**Module name confusion**  
+The Python module is **`rust_net`** (matches `#[pymodule] fn rust_net(...)` in `src/lib.rs`).
+
+**Fresh build**  
+If you need to nuke build artifacts:
+```bash
+cargo clean     # or delete the `target/` folder
+maturin develop
+```
+
+---
+
+## 🛣️ Roadmap (Ideas)
+
+- Mini‑batch training + optimizers (Adam/RMSProp)
+- Multi‑class (softmax + cross‑entropy)
+- Pluggable activations per layer
+- Optional CE logging & accuracy hooks
+- Switchable gradient‑clipping strategies
 
 ---
 
 ## 🤝 Contributing
-Contributions are welcome! Feel free to submit an issue or pull request.
+
+PRs and issues are welcome. Keep code readable and well‑commented—this project is both a tool **and** a learning resource. If you add features, include a small example (or test) showing how to use them.
 
 ---
 
-## 📝 License
-This project is licensed under the MIT License.
+## 🪪 License
+
+This project is licensed under the **MIT License**. See the license file for details.
