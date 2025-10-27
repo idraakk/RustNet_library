@@ -1,3 +1,7 @@
+// This file is not needed in this version of this project as a library.
+
+/*
+
 use clap::{Parser, Subcommand}; // Import clap to create and parse command-line interfaces.
 use rust_net::{data::load_csv, train::NeuralNetwork}; // Import necessary modules for data loading and neural network operations.
 use ndarray::Array2; // Import Array2 to handle 2D arrays used in the neural network computations.
@@ -146,3 +150,6 @@ fn normalize(inputs: &Array2<f64>) -> Array2<f64> {
     let std = inputs.std_axis(ndarray::Axis(0), 0.0);      // Compute the standard deviation of each feature.
     (inputs - &mean) / &std // Normalize each feature: (value - mean) / std deviation.
 }
+
+*/
+
