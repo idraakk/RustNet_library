@@ -1,34 +1,35 @@
+# --------------------------- Cargo.toml (Project Manifest) ---------------------------
+# This file tells Cargo (Rust's package manager & build system) how to build the project.
+# It declares the package metadata, the Rust edition, dependencies, crate type, etc.
+
 [package]
-name = "rust_net"               # The package name that Cargo uses. This identifies my project.
-version = "0.1.0"               # Version number of your project. Semantic versioning is recommended.
-edition = "2021"                # Specifies the Rust edition. Edition 2021 is the latest stable and provides modern features.
+name = "rust_net"              # Crate name. Also becomes the Python module name via #[pymodule] rust_net
+version = "0.1.0"              # Semantic version of the library.
+edition = "2021"               # Rust 2021 edition enables modern language features and idioms.
 
 [dependencies]
-# The ndarray crate is used for n-dimensional arrays and numerical operations.
-# We enable the "serde" feature so that we can serialize and deserialize arrays.
-ndarray = { version = "0.15", features = ["serde"] }  
+# ndarray provides N-dimensional arrays (similar to NumPy arrays).
+# We enable "serde" so arrays can be serialized/deserialized (used for save/load of the model).
+ndarray = { version = "0.15", features = ["serde"] }
 
-# The rand crate provides random number generation. We use it to initialize weights randomly.
+# rand is used for random initialization of weights.
 rand = "0.8"
 
-# Serde is a framework for serializing and deserializing data.
-# The "derive" feature allows us to automatically generate code for Serialize and Deserialize traits.
+# serde is Rust's serialization framework; "derive" auto-implements Serialize/Deserialize on structs.
 serde = { version = "1.0", features = ["derive"] }
 
-# serde_json lets us work with JSON files. We use it to save and load our model.
+# serde_json lets us read/write JSON files (used for model checkpointing).
 serde_json = "1.0"
 
-# csv is a library to read and write CSV files. We use it to load our training data.
+# csv library for CSV reading/writing (used by data helpers and training artifacts).
 csv = "1.1"
 
-# clap is used to parse command-line arguments (used in the original CLI version).
-clap = { version = "4.0", features = ["derive"] }
-
-# PyO3 is used to build Python bindings so that our Rust code can be called from Python.
-# The "extension-module" feature is necessary to compile the library as a Python extension.
+# pyo3 is the Python FFI layer that exposes Rust types/functions to Python.
+# The "extension-module" feature builds a Python extension module (.pyd/.so) instead of a normal lib.
 pyo3 = { version = "0.18", features = ["extension-module"] }
 
 [lib]
-# We specify that the crate type is "cdylib", which tells Cargo to compile a dynamic library
-# suitable for integration with other languages (Python in this case).
+# The crate builds as a C-compatible dynamic library (cdylib), required for Python extension modules.
+# The module entrypoint in src/lib.rs is #[pymodule] fn rust_net(...), which exports "rust_net" to Python.
 crate-type = ["cdylib"]
+# ------------------------------------------------------------------------------------
