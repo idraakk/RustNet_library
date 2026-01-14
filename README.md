@@ -1,4 +1,4 @@
-# RustNet — A Tiny, Fast Neural Network in Rust with First‑Class Python Bindings
+# RustNet - A Tiny, Fast Neural Network in Rust with First‑Class Python Bindings
 
 RustNet is a **from‑scratch, fully‑connected neural network** written in **Rust** and exposed to **Python** via [PyO3](https://pyo3.rs) and [maturin](https://www.maturin.rs/). It’s intentionally small, readable, and hackable—perfect for learning how modern ML internals work while still getting **native‑speed** inference/training from Rust.
 
